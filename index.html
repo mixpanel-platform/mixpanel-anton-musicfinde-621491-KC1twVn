@@ -1,15 +1,399 @@
+<!-- Credit to LDB for HTML/CSS Layout, and several of the methods used. Check out https://mixpanel.com/report/4/mpplatform/37527/ for her version. -->
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/css/reset.css">
-    <link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.css">
-    <script src="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.js"></script>
-  </head>
-  <body class="mixpanel-platform-body">
-    <h1>Hello, World!</h1>
-    <script>
-      // Run queries and display results here
-    </script>
-  </body>
+	<head>
+		<meta charset="utf-8">
+		<link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/css/reset.css">
+		<link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.css">
+		<script src="https://d3js.org/d3.v3.min.js"></script>
+		<script src="https://code.jquery.com/jquery-2.1.4.js"></script>
+		<script src="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.js"></script>
+	</head>
+	<body class="mixpanel-platform-body">
+		<style>
+			body {
+				color: #5c617b;
+			}
+			.events_label, .funnel-query-description, .unit_label, .length_label {
+				font-weight: bold;
+				font-size: 15px;
+				margin-right: 8px;
+				display: inline-block;
+			}
+      .unit_label, .length_label {
+        float: right;
+        margin-top: 6px;
+      }
+      .length_label {
+        float: left;
+      }
+			#event_list, #length {
+				display: inline-block;
+			}
+      #length {
+        margin-left: 47px;
+      }
+			#run, #funnel-query, .alert-ok {
+				clear:both;
+				vertical-align: 1px;
+				margin-left: 10px;
+				padding: 6px 12px;
+				background-color: #61adf0;
+				background-image: -webkit-linear-gradient(#6ab5f2, #53a0ee);
+				background-image: linear-gradient(#6ab5f2, #53a0ee);
+				box-shadow: inset 0 1px 1px #77bdf4,0 2px 2px -1px rgba(0,0,0,0.2);
+				text-transform: uppercase;
+				border: 1px solid #4d93d7;
+				color: #fff;
+				text-shadow: 0 -1px 0 rgba(0,0,0,0.2);
+				border-radius: 3px;
+				cursor: pointer;
+				font-weight: bold;
+				display: inline-block;
+			}
+			#dates {
+				float: right;
+			}
+      #length_unit {
+        float: right;
+        margin-bottom: 10px;
+        width: 204px;
+      }
+      #length {
+        float: left;
+      }
+			input {
+				font-family: system, -apple-system, ".SFNSDisplay-Regular", "Helvetica Neue", sans-serif;
+				font-weight: normal;
+				letter-spacing: 0.03em;
+				font-size: 13px;
+				color: #747d94;
+				height: 20px;
+				width: 355px;
+				margin: 0 0 10px 0;
+				padding: 5px;
+				border: 1px solid #bdc7d2;
+				-webkit-border-radius: 3px;
+				border-radius: 3px;
+				position: relative;
+				-webkit-appearance: textfield;
+				background-color: white;
+			}
+			input:focus, input:hover {
+				outline: 0;
+				border-color: #5ba7e1;
+			}
+			#report {
+				margin: 20px 0 55px;
+        clear: both;
+			}
+			#background {
+				background-color: #fdfdfd;
+				-webkit-border-radius: 5px;
+				border-radius: 5px;
+				border: 1px solid #bfcfda;
+				position: relative;
+			}
+			#axis, #graph {
+				padding-top: 55px;
+			}
+			#axis {
+				width: 55px;
+				position: absolute;
+				text-align: right;
+			}
+			#graph {
+				background-color: white;
+				margin-left: 55px;
+				border-left: 1px solid #d4e0e8;
+				-webkit-border-radius: 0 5px 5px 0;
+				border-radius: 0 5px 5px 0;
+				bottom: 0;
+				position: relative;
+			}
+			#graph-overlay {
+				margin-left: 55px;
+				position: absolute;
+				bottom: -51px;
+			}
+			.line, .label {
+				height: 55px;
+			}
+			.label {
+				padding-right: 10px;
+			}
+			.line {
+				border-top: 1px dashed #d2dfe7;
+				-webkit-user-select: none;
+				-moz-user-select: none;
+				-ms-user-select: none;
+				user-select: none;
+			}
+			.funnel-step {
+				margin: 0 35px;
+				width: 100px;
+				display: inline-block;
+			}
+			.converted, .dropped {
+				text-align: center;
+				font-weight: bold;
+			}
+			.converted {
+				width: 60px;
+				margin: 0 auto;
+				background-color: #65afe7;
+			}
+			.converted.first {
+				-webkit-border-radius: 3px 3px 0 0;
+				border-radius: 3px 3px 0 0;
+			}
+			.dropped {
+				width: 60px;
+				margin: 0 auto;
+				background-color: #e0e3ed;
+				-webkit-border-radius: 3px 3px 0 0;
+				border-radius: 3px 3px 0 0;
+				cursor: pointer;
+			}
+			.dropped:hover {
+				background-color: #cfd3e3;
+			}
+			.column-label {
+				margin-bottom: 8px;
+				margin-top: 23px;
+				text-align: center;
+				text-overflow: ellipsis;
+				overflow: hidden;
+				white-space: nowrap;
+			}
+			.column-label.active {
+				margin-top: 15px;
+				margin-bottom: 0;
+				padding: 7px 14px;
+				border: 1px solid #c4c9d8;
+				-webkit-border-radius: 50px;
+				border-radius: 50px;
+				box-shadow: inset 0 1px #fff,0 1px 3px rgba(0,0,0,0.1);
+				background-color: #f4f6f9;
+				background-image: -webkit-linear-gradient(#f7f8fb,#f0f2f5);
+				background-image: linear-gradient(#f7f8fb,#f0f2f5);
+			}
+			
+			.flow {
+				display: none;
+			}
+			.header {
+				padding: 10px 0;
+				font-size: 15px;
+				font-weight: bold;
+				text-shadow: 0 1px 0 rgba(255,255,255,0.7);
+			}
+			#flow {
+				background-color: white;
+				-webkit-border-radius: 5px;
+				border-radius: 5px;
+				border: 1px solid #bfcfda;
+			}
+			.node {
+				cursor: pointer;
+			}
+			.node circle {
+				fill: #fff;
+				stroke: steelblue;
+				stroke-width: 1.5px;
+			}
+			.node text {
+				font: 10px sans-serif;
+				text-overflow: ellipsis;
+				overflow: hidden;
+				white-space: nowrap;
+			}
+			.link {
+				fill: none;
+				stroke: #ccc;
+				stroke-width: 1.5px;
+				stroke-linecap: round;
+			}
+			.funnel-query-description {
+				margin: 0 10px;
+			}
+			#funnel-query {
+				margin: 20px 20px 20px 0;
+			}
+			.alert {
+				display: none;
+				position: fixed;
+				margin: 0 auto;
+				left: 0;
+				right: 0;
+				top: 50%;
+				margin-top: -75px;
+				z-index: 20;
+				background-color: #fbfbfb;
+				border: 1px solid #c4c9d8;
+				padding: 20px;
+				width: 300px;
+				min-height: 150px;
+				border-radius: 5px;
+			}
+			.alert-title {
+				text-transform: uppercase;
+				font-weight: 600;
+				margin: 15px;
+			}
+			.alert-content {
+				margin: 15px;
+				line-height: 25px;
+			}
+			.alert-ok {
+				position: absolute;
+				bottom: 15px;
+				right: 35px;
+			}
+		</style>
+​
+		<div class="mixpanel-platform-section">
+			<div id="dates"></div>
+			<div class="events">
+				<div class="events_label">Funnel Steps:</div>
+				<input id="event_list" value="View signup,$signup,Viewed report">
+				<div id="run">RUN</div>
+			</div>
+      <div class="length_label">Length:</div>
+      <input id="length" value="20">
+      <div id="length_unit"></div>
+      <div class="unit_label">Unit:</div>
+			<div id="report">
+				<div id="background">
+					<div id="axis">
+						<div class="label"></div>
+						<div class="label"></div>
+						<div class="label"></div>
+						<div class="label"></div>
+						<div class="label"></div>
+						<div class="label"></div>
+					</div>
+					<div id="graph">
+						<div class="line"></div>
+						<div class="line"></div>
+						<div class="line"></div>
+						<div class="line"></div>
+						<div class="line"></div>
+						<div class="line"></div>
+					</div>
+					<div id="graph-overlay">
+						<div id="funnel"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<script>
+			var event_list = $('#event_list').val().split(',');
+      var lengthUnit = $('#length_unit').MPSelect({
+        items: [
+          { label: 'Days', value: 'day' },
+          { label: 'Hours', value: 'hour' },
+          { label: 'Minutes', value: 'minute' },
+          { label: 'Seconds', value: 'second' }
+        ]
+      });
+      lengthUnit.val('second');
+			var path_length = 3;
+			var funnel_select = [];
+			// runQuery
+			$(document).ready(function() {
+				runQuery();
+			});
+			$('#dates').on('change', function() { runQuery(); });
+      $('#length_unit').on('change', function() { runQuery(); });
+			$('#run').on('click', function() { runQuery(); });
+			function error(message) {
+				var alert = $('<div class="alert"><div class="alert-title">Error</div><div class="alert-content">' + message + '</div><div class="alert-ok">OK</div></div>');
+				alert.appendTo('body').fadeIn(200);
+			}
+			// close alerts
+			$('body').on('click', '.alert-ok', function() {
+					$('.alert').remove();
+			});
+			// custom query
+			MP.api.setCredentials('<KEY>', '<SECRET>');
+			function runQuery() {
+				// set up parameters
+				event_list = $('#event_list').val().split(',');
+        var length = Number($('#length').val());
+				if (event_list.length < 2) {
+					error('Must have more than one event in a funnel. Events can be selected or deselected by clicking on the event name or applicable node.');
+					return;
+				} else if (length < 2 && lengthUnit.val() == 'second') {
+          error('Set a longer second length. (Greater than 1)');
+        } else if (length > 90) {
+          error('Set a shorter length. (90 or less)')
+        } else {
+					_.each(event_list, function(e) {
+						$.trim(e);
+					});
+				}
+				
+				// clear previous query
+				$('#funnel').html('');
+				$('.flow').hide();
+				var dateVal = $('#dates').val();
+				var dateFrom = moment(dateVal.from);
+				var dateTo = moment(dateVal.to);
+				var dateDiff = dateTo.diff(dateFrom,'days') + 1;
+				console.log(dateDiff);
+				var funnelParams = {
+					from: date_to_string(dateVal.from),
+					to: date_to_string(dateVal.to),
+					length: $('#length').val(),
+					length_unit: lengthUnit.val(),
+					interval: dateDiff
+				}
+				var funnelCallback = function(results) {
+          console.log(results);
+          var first = true;
+          for (var i = 0; i < event_list.length; i++) {
+            var totalUniques = _.sum(_.pluck(results[i], 'count'));
+            addFunnelStep(event_list[i], totalUniques, first);
+            first = false;
+          }
+        };
+				MP.api.funnel.apply(MP.api, event_list.concat(funnelParams, funnelCallback));
+			}
+			// create funnel
+			$('#dates').MPDatepicker();
+			var funnelGraph = $('#funnel');
+			var ratio = calculateGraphRatio();
+			
+			function addFunnelStep(eventName, converted, first) {
+				var first = first ? 'first' : '';
+				// set graph height ratio and y-axis labels
+				if (first == 'first') {
+					ratio = calculateGraphRatio(converted);
+					var increment = converted / 6;
+					for (var i = 1; i <=6; i++) {
+						$('.label:nth-child(' + i + ')').text(kFormatter(converted - ((i-1) * increment)));
+					}
+				}
+				var funnelStep = $('<div class="funnel-step"></div>').appendTo(funnelGraph);
+				$('<div class="converted">' + converted + '</div>').css({'height': converted*ratio + 'px', 'line-height': converted*ratio + 'px'}).appendTo(funnelStep).addClass(first);
+				$('<div class="column-label" title="' + eventName + '">' + eventName + '</div>').appendTo(funnelStep);
+			}
+			
+			function calculateGraphRatio(count) {
+				var count = count || 1;
+				var total = $('#graph').height();
+				return total/count;
+			}
+			function kFormatter(num) {
+				return num > 999 ? (num/1000).toFixed(1) + 'K' : Math.floor(num);
+			}
+			
+			function date_to_string(d) {
+					return d.toISOString().split('T')[0];
+			}
+			
+		</script>
+	</body>
 </html>
+1 Comment Collapse
